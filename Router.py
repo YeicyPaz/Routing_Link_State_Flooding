@@ -1,13 +1,17 @@
 #dans chaque router il doit avoir au moins:
 #une table de voisins et une base de donnes d'état d'enlace(LSDB)
 #on aura besoin aussi d'un conteur pour son prope nombre de sequence vu que chanque fois que se emitte un LSA(link-statement advertissment) il faut utiliser un nombre strictement croissant
+import time
+import threading
+from random import random
 from typing import Dict
 
 from LSA import LSA
 
 class Router:
-    def __init__(self, name:str):
+    def __init__(self, name:str, visualizer=None):
         self.name = name
+        self.visualizer = visualizer
 
         #table de voisin directs: dictionnaire de: {voisin: coute} 
         self.neighbors: Dict[str,int] ={}
@@ -22,7 +26,8 @@ class Router:
     
     def add_neighbor(self, neighbor:str, cost:int): 
         """metode auxiliar pour conecter ce router avec ses voisins"""
-        self.neighbors[neighbor] =cost   
+        self.neighbors[neighbor] = cost
+        if self.visualizer: self.visualizer.addEdge(self.name, neighbor, cost)
 
     def generate_lsa(self)-> LSA:
         """Genere un nouveau LSA en decribant le voisin actueles de ce router"""
@@ -36,7 +41,12 @@ class Router:
             )
     
     #pour le processus des LSA
-    def receive_lsa(self, lsa_received: LSA, sender_name:str, network:dict):
+    def receive_lsa(self, lsa_received: LSA, sender_name:str, network:dict, delay=0):
+
+        # A positive delay allows to simulate the message (LSA) transit time
+        # It's therefore better to call this function in a thread (parallel process)
+        if delay > 0: time.sleep(delay)
+        self.visualizer.removeTransit(sender_name, self.name, lsa_received.origin)
        
        #si il y a LSA expiré il faut le descarted
         if lsa_received.age <=0:
@@ -69,9 +79,9 @@ class Router:
                     if lsa_to_send.age >0:
                         neighbors_obj= network[neighbor_name]
                         #le voisin recive le LSA et on est le sender
-                        neighbors_obj.receive_lsa(lsa_to_send, self.name, network)
-                         
-
-
-
-
+                        self.visualizer.lsaTransit(self.name, neighbor_name, lsa_to_send.origin)
+                        delay = random()+0.5    # simulate a sending time between 0.5 and 1.5 second
+                        # Call the receive function through a thread to make the actions simultaneous and non-blocking
+                        threading.Thread(target=neighbors_obj.receive_lsa, args=(lsa_to_send, self.name, network, delay)).start()
+                
+            self.visualizer.capture()

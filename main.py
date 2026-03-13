@@ -1,4 +1,8 @@
+import time
+import threading
+from random import random
 from Router import Router
+from visualizer import Visualizer
 
 def show_topologie(router):
     """il lis le LSDB d'un router et extrait tous les nodes uniques pour la reconstruction de la carte de reseau"""
@@ -25,11 +29,13 @@ def show_topologie(router):
 
 
 if __name__ == "__main__":
-    router_A = Router("A")
-    router_B = Router("B")
-    router_C = Router("C")
-    router_D = Router("D")
-    router_E = Router("E")
+    visualizer = Visualizer()
+
+    router_A = Router("A",visualizer)
+    router_B = Router("B",visualizer)
+    router_C = Router("C",visualizer)
+    router_D = Router("D",visualizer)
+    router_E = Router("E",visualizer)
 
     #config de voisin et cost selon le lab
     #enlace de ---- router A-----
@@ -64,6 +70,8 @@ if __name__ == "__main__":
         "D":router_D,
         "E":router_E
     }
+    visualizer.setNodes(network)
+    visualizer.capture()    # initial network
 
     for name, router in network.items():
         my_lsa= router.generate_lsa() #genere son prope LSA
@@ -71,8 +79,21 @@ if __name__ == "__main__":
         #on l'envoie le LSA à tous ces voisin direct
         for neighbor in router.neighbors:
             neighbor_node =network[neighbor] #on obtienne l'object du vosin depuis notre dictionnaire de reseau
+            visualizer.lsaTransit(name, neighbor, name)
+            delay = random()+0.5    # simulate a sending time between 0.5 and 1.5 second
+            # Call the receive function through a thread to make the actions simultaneous and non-blocking
+            threading.Thread(target=neighbor_node.receive_lsa, args=(my_lsa, name, network, delay)).start()
+        
+        visualizer.capture()    # LSAs of a same router are assumed to be sent at the same time
 
-            neighbor_node.receive_lsa(my_lsa, name, network)
+        # Waiting time to prevent the sending of LSA of all routers at the same time
+        # The shorter the waiting time, the more simultaneous traffic there will be.
+        time.sleep(2)
+
+    # Waiting all LSA message are finished to transit (impossible in reality)
+    while len(visualizer.edges_lsa) > 0:
+        time.sleep(1)
+    visualizer.capture()
 
     print("--------Flooding completed-----------")
 
@@ -86,3 +107,5 @@ if __name__ == "__main__":
         print(f"Origin: {origin} | Seq: {lsa.seq} | Age: {lsa.age}  | Neighbors: {lsa.neighbors}")           """
     
     show_topologie(router_A)
+
+    visualizer.show()
