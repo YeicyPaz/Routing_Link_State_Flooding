@@ -30,6 +30,7 @@ class Visualizer:
         self.edges = {}         # format: [(label_router1, label_router2): link_cost]
         self.edges_lsa = {}     # format: {(label_router_sender, label_router_receiver): [label_router_origins]}
         self.edges_crashed = [] # format: [(label_router1, label_router2)]
+        self.nodes_data = {}    # to save LSDB and routing table for each capture   format: {int: {label: string}}
     
     
     def setNodes(self, routers:{str:Router}):
@@ -82,10 +83,23 @@ class Visualizer:
     def capture(self):
         # Build network and save as image file
         network = graphviz.Digraph(filename=str(self.nb_img), format=Visualizer.format, graph_attr={'rankdir':'LR'})    # LR to display horizontally
-        
+        self.nodes_data[self.nb_img] = {}
+
         for label, router in self.nodes.items():
             network.node(label, color=self.nodes_colors[label])
-            #TODO: save LSDB and routing table of router
+            
+            # Save LSDB and routing table of router
+            # Actually saving data in node tooltip is possible with Graphviz but data can't be exportable in PNG or JPG image
+            # SVG preserves tooltips, but this image format is not compatible with Tkinter.
+            # The data will therefore be displayed in a dynamic table with router selection.
+            lsdb = router.getLSDB()
+            data = "----- LSDB -----\n" + (lsdb if len(lsdb) > 0 else "None\n")
+            data += "\n----- Routing Table -----\nTarget \tVia \tCost \tPath"
+            for other_label, other_router in self.nodes.items():
+                if other_label != label:
+                    path, cost = router.compute_shortest_paths(other_router, self.nodes)
+                    data += f"\n{other_label} \t{path[min(1,len(path))]} \t{cost} \t{path}"
+            self.nodes_data[self.nb_img][label] = data
         
         for routers, cost in self.edges.items():
             r1, r2 = routers[0], routers[1]
@@ -134,25 +148,29 @@ class Visualizer:
         self.btn_forward.grid(row=0, column=2, padx=30)
         self.progress_bar.grid(row=1, column=0, columnspan=3, pady=10)
 
-        # Network & ...
+        # Network & Routers Data (LSDB + routing table)
         system_infos = tk.Frame(self.root)
         system_infos.pack(padx=20, pady=20)
         self.network = tk.Label(system_infos)
         self.network.grid(row=0, column=0, padx=30)
-        #self.fifo_req_table = tk.Frame(system_infos)
-        #self.fifo_req_table.grid(row=0, column=1, padx=30)
-        #tk.Label(self.fifo_req_table, bg="white", font='Arial 14 bold', text="Process", relief="groove", width=7).grid(row=0, column=0)
-        #tk.Label(self.fifo_req_table, bg="white", font='Arial 14 bold', text="Requests Queue", relief="groove", width=20).grid(row=0, column=1)
+        router_data_frame = tk.Frame(system_infos)
+        router_data_frame.grid(row=0, column=1, padx=30)
+        self.selected_router = tk.StringVar()
+        combo = ttk.Combobox(router_data_frame, font='Arial 14 bold', state="readonly", textvariable=self.selected_router)
+        combo['values'] = tuple("Router "+label for label in self.nodes.keys())
+        combo.bind('<<ComboboxSelected>>', self._upd_router_data)
+        combo.pack(pady=5)
+        self.router_data = tk.StringVar()
+        self.router_data.set("⬆ Select a router ⬆")
+        tk.Label(router_data_frame, bg="white", font='Arial 12', relief="groove", justify="left", textvariable=self.router_data).pack(pady=5)
 
         # Legend
         legend = tk.Frame(self.root, bg="white")
         legend.pack(padx=20, pady=10)
-        tk.Label(legend, bg="white", font='Arial 12 bold', text="LSA in transits: ", fg="black").grid(row=0, column=0, padx=15, pady=5)
+        tk.Label(legend, bg="white", font='Arial 12 bold', text="LSAs in transit:", fg="black").grid(row=0, column=0, padx=15, pady=5)
         i = 0
-        print(self.nodes_colors)
         for router, color in self.nodes_colors.items():
             i+=1
-            print(i,router,color)
             tk.Label(legend, bg="white", font='Arial 12 bold', text="→ from "+router, fg=color).grid(row=0, column=i, padx=10, pady=5)
     
 
@@ -193,27 +211,20 @@ class Visualizer:
             image = PhotoImage(file=self.img_folder+'/'+str(self.step)+"."+Visualizer.format)
             self.network.configure(image=image)
             self.network.image = image
-            # update table
-            #for id,node in self.nodes.items():
-                #queue = ", ".join(self.request_queues[self.step][id])
-                #self.req_queue_vars[id].set(queue)
+            # update router data
+            if self.step > 0: self._upd_router_data(None)
         except Exception as e: print(e)
+    
+
+    def _upd_router_data(self, event):
+        label_router = self.selected_router.get()[-1]   # assume that the router name consists of a single character
+        data = self.nodes_data[self.step][label_router]
+        self.router_data.set(data)
 
 
     def show(self):
         self._create_interface()
         self.step = 0
         self.thread_autoplaying = None
-        #self.req_queue_vars = {}
-
-        # init table
-        #n = 0
-        #for id, node in self.nodes.items():
-            #var = tk.StringVar()
-            #self.req_queue_vars[id] = var
-            #tk.Label(self.fifo_req_table, bg="white", width=7, font='Arial 14 bold', relief="groove", text=str(id)).grid(row=n+1, column=0)
-            #tk.Label(self.fifo_req_table, bg="white", width=20, font='Arial 14 bold', relief="groove", textvariable=var).grid(row=n+1, column=1)
-            #n += 1
-        
         self._update_system()
         self.root.mainloop()

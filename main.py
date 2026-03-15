@@ -72,7 +72,9 @@ if __name__ == "__main__":
     }
     visualizer.setNodes(network)
     visualizer.capture()    # initial network
-    """
+
+    print("LSA exchanges are running...")
+    
     for name, router in network.items():
         my_lsa= router.generate_lsa() #genere son prope LSA
 
@@ -94,25 +96,23 @@ if __name__ == "__main__":
     while len(visualizer.edges_lsa) > 0:
         time.sleep(1)
     visualizer.capture()
-    """
-    print("--------Flooding completed-----------")
+    
+    print("\n--------Flooding completed-----------")
 
     #et on montre le contenue de LSDB
-    print("Contenue du LSDB du Router A:")
-    for origin, lsa in router_A.lsdb.items():
-        print(f"Origin: {origin} | Seq: {lsa.seq} | Age: {lsa.age}  | Neighbors: {lsa.neighbors}")     
+    print("\nContenue du LSDB du Router A:")
+    print(router_A.getLSDB())
 
-    """print("Contenue du LSDB du Router B:")
-    for origin, lsa in router_B.lsdb.items():
-        print(f"Origin: {origin} | Seq: {lsa.seq} | Age: {lsa.age}  | Neighbors: {lsa.neighbors}")           """
+    print("Contenue du LSDB du Router B:")
+    print(router_B.getLSDB())
     
-    #show_topologie(router_A)
+    show_topologie(router_A)
 
-    #visualizer.show()
+    print()
+    print(f">>> The shortest path from B to E: {router_B.compute_shortest_paths(router_E, network)}\n")
+    print(f">>> The shortest path from C to E: {router_C.compute_shortest_paths(router_E, network)}\n")
+    print(f">>> The shortest path from A to D: {router_A.compute_shortest_paths(router_D, network)}\n")
 
-    print(f"the shortest path from B to E: {router_B.compute_shortest_paths(router_E, network)}")
-    print(f"the shortest path from C to E: {router_C.compute_shortest_paths(router_E, network)}")
-
-    print(f"the shortest path from A to D: {router_A.compute_shortest_paths(router_D, network)}")
+    visualizer.show()
     
     

@@ -92,7 +92,7 @@ class Router:
         # visiter les voisins du noeud actuel et mettre à jour les couts
         #on fait une file de priorité
         pq = [(0, self.name, self)]
-        print(f"Computing shortest path from {self.name} to {target.name}...")
+        #print(f"Computing shortest path from {self.name} to {target.name}...")
         heapq.heapify(pq) #on transforme en min-heap
         visited = set()
         while pq: #tant que la priority queue n'est pas vide
@@ -106,7 +106,7 @@ class Router:
                 tentative_distance = current_distance + cost
                 if tentative_distance < distances[neighbor_obj][0]:
                     distances[neighbor_obj] = (tentative_distance, current_node)
-                    print(f"Updating distance to {neighbor_obj.name}: {tentative_distance}, via the last node used {current_node.name}")
+                    #print(f"Updating distance to {neighbor_obj.name}: {tentative_distance}, via the last node used {current_node.name}")
                     heapq.heappush(pq, (tentative_distance, neighbor_obj.name, neighbor_obj))
         # Reconstruct the path
         path = []
@@ -115,5 +115,10 @@ class Router:
             path.append(current.name)
             current = distances[current][1]
         path.reverse()
-        return path
+        return path, distances[target][0]
 
+    def getLSDB(self)->str:
+        result = ""
+        for origin, lsa in self.lsdb.items():
+            result += f"Origin: {origin} | Seq: {lsa.seq} | Age: {lsa.age}  | Neighbors: {lsa.neighbors}\n"
+        return result
