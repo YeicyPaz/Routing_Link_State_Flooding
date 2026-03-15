@@ -91,11 +91,12 @@ class Router:
         distances[self] = (0, None)  #le  cout pour le router de départ est de 0
         # visiter les voisins du noeud actuel et mettre à jour les couts
         #on fait une file de priorité
-        pq = [(0,self)]
+        pq = [(0, self.name, self)]
+        print(f"Computing shortest path from {self.name} to {target.name}...")
         heapq.heapify(pq) #on transforme en min-heap
         visited = set()
         while pq: #tant que la priority queue n'est pas vide
-            current_distance, current_node = heapq.heappop(pq) #on récupere le noeud avec la plus petite distance
+            current_distance, _, current_node = heapq.heappop(pq) #on récupere le noeud avec la plus petite distance
             if current_node in visited:
                 continue #on ignore les noeuds deja visités
             visited.add(current_node)
@@ -105,8 +106,9 @@ class Router:
                 tentative_distance = current_distance + cost
                 if tentative_distance < distances[neighbor_obj][0]:
                     distances[neighbor_obj] = (tentative_distance, current_node)
-                    heapq.heappush(pq, (tentative_distance, neighbor_obj))
-        # le chemin sous forme de liste de noms de routeurs
+                    print(f"Updating distance to {neighbor_obj.name}: {tentative_distance}, via the last node used {current_node.name}")
+                    heapq.heappush(pq, (tentative_distance, neighbor_obj.name, neighbor_obj))
+        # Reconstruct the path
         path = []
         current = target
         while current is not None:

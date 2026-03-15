@@ -110,7 +110,7 @@ if __name__ == "__main__":
 
     #visualizer.show()
 
-    #print(f"the shortest path from B to E: {router_B.compute_shortest_paths(router_E, network)}")
+    print(f"the shortest path from B to E: {router_B.compute_shortest_paths(router_E, network)}")
     print(f"the shortest path from C to E: {router_C.compute_shortest_paths(router_E, network)}")
 
     print(f"the shortest path from A to D: {router_A.compute_shortest_paths(router_D, network)}")
