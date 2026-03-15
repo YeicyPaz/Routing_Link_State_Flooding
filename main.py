@@ -72,7 +72,7 @@ if __name__ == "__main__":
     }
     visualizer.setNodes(network)
     visualizer.capture()    # initial network
-
+    """
     for name, router in network.items():
         my_lsa= router.generate_lsa() #genere son prope LSA
 
@@ -94,7 +94,7 @@ if __name__ == "__main__":
     while len(visualizer.edges_lsa) > 0:
         time.sleep(1)
     visualizer.capture()
-
+    """
     print("--------Flooding completed-----------")
 
     #et on montre le contenue de LSDB
@@ -106,6 +106,13 @@ if __name__ == "__main__":
     for origin, lsa in router_B.lsdb.items():
         print(f"Origin: {origin} | Seq: {lsa.seq} | Age: {lsa.age}  | Neighbors: {lsa.neighbors}")           """
     
-    show_topologie(router_A)
+    #show_topologie(router_A)
 
-    visualizer.show()
+    #visualizer.show()
+
+    #print(f"the shortest path from B to E: {router_B.compute_shortest_paths(router_E, network)}")
+    print(f"the shortest path from C to E: {router_C.compute_shortest_paths(router_E, network)}")
+
+    print(f"the shortest path from A to D: {router_A.compute_shortest_paths(router_D, network)}")
+    
+    

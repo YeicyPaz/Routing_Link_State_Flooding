@@ -5,7 +5,7 @@ import time
 import threading
 from random import random
 from typing import Dict
-
+import heapq
 from LSA import LSA
 
 class Router:
@@ -85,3 +85,33 @@ class Router:
                         threading.Thread(target=neighbors_obj.receive_lsa, args=(lsa_to_send, self.name, network, delay)).start()
                 
             self.visualizer.capture()
+
+    def compute_shortest_paths(self, target, routers): #Dijkstra algorithme
+        distances = {router_obj: (float('inf'), None) for router_obj in routers.values()}  # on initialise les couts à l'infini
+        distances[self] = (0, None)  #le  cout pour le router de départ est de 0
+        # visiter les voisins du noeud actuel et mettre à jour les couts
+        #on fait une file de priorité
+        pq = [(0,self)]
+        heapq.heapify(pq) #on transforme en min-heap
+        visited = set()
+        while pq: #tant que la priority queue n'est pas vide
+            current_distance, current_node = heapq.heappop(pq) #on récupere le noeud avec la plus petite distance
+            if current_node in visited:
+                continue #on ignore les noeuds deja visités
+            visited.add(current_node)
+            for neighbor_name, cost in routers[current_node.name].neighbors.items():
+                neighbor_obj = routers[neighbor_name]
+                #additionner la distance
+                tentative_distance = current_distance + cost
+                if tentative_distance < distances[neighbor_obj][0]:
+                    distances[neighbor_obj] = (tentative_distance, current_node)
+                    heapq.heappush(pq, (tentative_distance, neighbor_obj))
+        # le chemin sous forme de liste de noms de routeurs
+        path = []
+        current = target
+        while current is not None:
+            path.append(current.name)
+            current = distances[current][1]
+        path.reverse()
+        return path
+
