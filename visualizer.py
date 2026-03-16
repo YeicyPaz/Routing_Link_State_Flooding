@@ -16,7 +16,7 @@ os.environ["PATH"] += os.pathsep + graphviz_path
 class Visualizer:
 
     format = "png"
-    colors = ["blue", "red", "green", "gold", "purple", "orange", "magenta", "cyan", "lime", "gray"]
+    colors = ["blue", "red", "green", "gold", "purple", "cyan", "magenta", "lime"]
 
     def __init__(self, img_folder="default", autocapture=False):
         # autocapture permits to capture network when its topology and routing tables change + LSA transmitted
@@ -95,15 +95,19 @@ class Visualizer:
             lsdb = router.getLSDB()
             data = "----- LSDB -----\n" + (lsdb if len(lsdb) > 0 else "None\n")
             data += "\n----- Routing Table -----\nTarget \tVia \tCost \tPath"
-            for other_label, other_router in self.nodes.items():
-                if other_label != label:
-                    path, cost = router.compute_shortest_paths(other_router, self.nodes)
-                    data += f"\n{other_label} \t{path[min(1,len(path))]} \t{cost} \t{path}"
+            for other_label, routing in router.routing_table_from_lsdb().items():
+                data += f"\n{other_label} \t{routing['next_hop']} \t{routing['cost']} \t{routing['path']}"
+            #for other_label, other_router in self.nodes.items():
+                #if other_label != label:
+                    #path, cost = router.compute_shortest_paths(other_router, self.nodes)
+                    #data += f"\n{other_label} \t{path[min(1,len(path))]} \t{cost} \t{path}"
             self.nodes_data[self.nb_img][label] = data
         
         for routers, cost in self.edges.items():
             r1, r2 = routers[0], routers[1]
-            if (r1,r2) in self.edges_lsa:
+            if (r1,r2) in self.edges_crashed or (r2,r1) in self.edges_crashed:
+                network.edge(r1, r2, style="dashed", color="black", dir='none')
+            elif (r1,r2) in self.edges_lsa:
                 if (r2,r1) in self.edges_lsa:
                     # two LSAs transits from 2 directions -> display double directed link with colors of the two origin routers that send LSAs
                     color = self.nodes_colors[self.edges_lsa[(r1,r2)][0]] + ":" + self.nodes_colors[self.edges_lsa[(r2,r1)][0]]
@@ -171,7 +175,8 @@ class Visualizer:
         i = 0
         for router, color in self.nodes_colors.items():
             i+=1
-            tk.Label(legend, bg="white", font='Arial 12 bold', text="→ from "+router, fg=color).grid(row=0, column=i, padx=10, pady=5)
+            tk.Label(legend, bg="white", font='Arial 12 bold', text="→ from "+router, fg=color).grid(row=0, column=i, padx=10)
+        tk.Label(legend, bg="white", font='Arial 12 bold', text="- - -  link failure", fg="black").grid(row=1, column=0, columnspan=i+1, padx=10)
     
 
     def _back(self):
@@ -212,7 +217,7 @@ class Visualizer:
             self.network.configure(image=image)
             self.network.image = image
             # update router data
-            if self.step > 0: self._upd_router_data(None)
+            if self.step >= 0: self._upd_router_data(None)
         except Exception as e: print(e)
     
 

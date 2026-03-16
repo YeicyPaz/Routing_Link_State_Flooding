@@ -33,7 +33,6 @@ def wait_for_flooding(visualizer):
     visualizer.capture()
 
 
-
 def flood_router_lsa(router, network, visualizer):
     """fait originer un nouveau LSA au router et l'envoie à tous ses voisins directs"""
     my_lsa = router.generate_lsa()
@@ -46,81 +45,6 @@ def flood_router_lsa(router, network, visualizer):
         threading.Thread(target=neighbor_node.receive_lsa, args=(my_lsa, router.name, network, delay)).start()
 
     visualizer.capture()
-
-
-
-def build_graph_from_lsdb(router):
-    """reconstruit la topologie vue par un routeur à partir de son LSDB"""
-    graph = {}
-
-    for origin, lsa in router.lsdb.items():
-        graph.setdefault(origin, {})
-        for neighbor, cost in lsa.neighbors.items():
-            graph.setdefault(neighbor, {})
-            graph[origin][neighbor] = cost
-            graph[neighbor][origin] = cost
-
-    return graph
-
-
-
-def routing_table_from_lsdb(router):
-    """calcule la table de routage d'un routeur à partir de son LSDB reconstruit"""
-    graph = build_graph_from_lsdb(router)
-    source = router.name
-
-    if source not in graph:
-        return {}
-
-    distances = {node: float('inf') for node in graph}
-    previous = {node: None for node in graph}
-    distances[source] = 0
-    pq = [(0, source)]
-    visited = set()
-
-    while pq:
-        current_distance, current_node = heapq.heappop(pq)
-
-        if current_node in visited:
-            continue
-        visited.add(current_node)
-
-        for neighbor, cost in graph[current_node].items():
-            tentative_distance = current_distance + cost
-            if tentative_distance < distances[neighbor]:
-                distances[neighbor] = tentative_distance
-                previous[neighbor] = current_node
-                heapq.heappush(pq, (tentative_distance, neighbor))
-
-    routing_table = {}
-    for destination in sorted(graph.keys()):
-        if destination == source:
-            continue
-
-        if distances[destination] == float('inf'):
-            routing_table[destination] = {
-                "next_hop": None,
-                "cost": float('inf'),
-                "path": None
-            }
-            continue
-
-        path = []
-        current = destination
-        while current is not None:
-            path.append(current)
-            current = previous[current]
-        path.reverse()
-
-        next_hop = path[1] if len(path) > 1 else destination
-        routing_table[destination] = {
-            "next_hop": next_hop,
-            "cost": distances[destination],
-            "path": path
-        }
-
-    return routing_table
-
 
 
 def print_changed_entries(old_table, new_table):
@@ -212,7 +136,7 @@ if __name__ == "__main__":
 
     show_topologie(router_A)
 
-    old_routing_table_A = routing_table_from_lsdb(router_A)
+    old_routing_table_A = router_A.routing_table_from_lsdb()
 
     print()
     print(f">>> The shortest path from B to E: {router_B.compute_shortest_paths(router_E, network)}\n")
@@ -226,13 +150,11 @@ if __name__ == "__main__":
     router_E.neighbors.pop("D", None)
 
     # mise a jour visuelle du lien supprime
-    visualizer.edges.pop(("D", "E"), None)
-    visualizer.edges.pop(("E", "D"), None)
+    visualizer.edges_crashed.append(("D", "E"))
     visualizer.capture()
 
     # D et E originent de nouveaux LSAs
     flood_router_lsa(router_D, network, visualizer)
-    time.sleep(1)
     flood_router_lsa(router_E, network, visualizer)
 
     # attendre la propagation complete du changement
@@ -244,7 +166,7 @@ if __name__ == "__main__":
 
     show_topologie(router_A)
 
-    new_routing_table_A = routing_table_from_lsdb(router_A)
+    new_routing_table_A = router_A.routing_table_from_lsdb()
     print_changed_entries(old_routing_table_A, new_routing_table_A)
 
     visualizer.show()
