@@ -113,6 +113,8 @@ if __name__ == "__main__":
     print(f">>> The shortest path from C to E: {router_C.compute_shortest_paths(router_E, network)}\n")
     print(f">>> The shortest path from A to D: {router_A.compute_shortest_paths(router_D, network)}\n")
 
+    router_A.apply_link_failure("E", "D", network)
+
     visualizer.show()
     
     
